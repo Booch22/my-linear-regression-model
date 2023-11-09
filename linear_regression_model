@@ -1,0 +1,221 @@
+import random
+import sympy as sp
+from matplotlib import pyplot as plt
+
+# สร้างโมเดล 
+##########################################################################################
+class linear_regression :
+    def __init__( self, weight = random.randint(0, 10), bias = random.randint(0, 10) ) :
+        self.weight = weight
+        self.bias = bias
+
+    # นำเข้า feature และ label สู่โมเดลเพื่อหาอนุพันธ์
+    def fit( self, feature, label, epochs, learning_rate ) :
+        self.feature = feature # เก็บค่า feature
+        self.label = label # เก็บค่า label
+        self.epochs = epochs
+        self.learning_rate = learning_rate
+
+        self.derivative_loss_fucntion() # หาอนุพันธ์ของ bias และ weight   
+
+    # ฟังก์ชันหาอนุพันธ์
+    def derivative_loss_fucntion( self ) :
+        derivative_bias = [] # เก็บค่าการหาอนุพันธ์จาก b
+        derivative_weight = [] # เก็บค่าการหาอนุพันธ์จาก w
+        b, w = sp.symbols( 'b w' ) # เอาไว้หาค่าอนุพันธ์ของ bias และ weight
+
+        for i in range( len(self.feature) ) :  # หาอนุพันธ์ทีละจุด ทั้ง bias และ weight
+            # loss fucntion สำหรับการหาอนุพันธ์
+            loss_func = ( self.label[i] - (( w * self.feature[i]) + b) ) ** 2
+            # หาอนุพันธ์ของ b แล้วนำไปเก็บใน list
+            derivative_bias.append( sp.diff(loss_func, b) ) 
+            # หาอนุพันธ์ของ w แล้วนำไปเก็บใน list
+            derivative_weight.append( sp.diff(loss_func, w) ) 
+
+        self.diff_bias = sum( derivative_bias ) # เก็บสมการที่ได้นำไปใช้ปรับ bias
+        self.diff_weight = sum( derivative_weight ) # เก็บสมการที่ได้นำไปใช้ปรับ weight
+        print( f'Derivative of bias is -----> {self.diff_bias}' )
+        print( f'Derivative of weight is ---> {self.diff_weight}' )
+
+        self.optimization() # ปรับค่าพารามิเตอร์ต่อ
+
+    @staticmethod
+    def optimize_new_value( self, formula, bias, weight, learning_rate ) :
+        b, w = sp.symbols('b w') # ตั้งให้ b และ w เป็นตัวแปรสำหรับแทนค่า
+        A = formula.subs( {b : bias, w : weight} )
+        step_size = A * learning_rate # สมการที่ใช้หา step size ในแต่ละรอบ
+
+        # หาค่าใหม่ของ bias หากเป็นสมการที่มาจากการหาอนุพันธ์ของ bias
+        if formula == self.diff_bias :
+            new_value = bias - step_size
+        # หาค่าใหม่ของ weight หากเป็นสมการที่มาจากการหาอนุพันธ์ของ weight
+        elif formula == self.diff_weight :
+            new_value = weight - step_size
+        return new_value
+
+    @staticmethod
+    # ใช้คำนวณค่า loss ของโมเดล
+    def loss_function( bias, weight, feature, label ) :
+        # Sum of Squared Residuals calculation ใช้คำนวณค่า loss สำหรับโมเดล linear regression
+        SSR_load = []
+        for i in range( len(feature) ) :
+            linear_regression_formula = ( weight * feature[i] ) + bias # y = wx + b
+            SQR = pow( ( label[i] - linear_regression_formula ), 2 )   # (true_y - pred_y) ^2
+            SSR_load.append( SQR )
+        return sum(SSR_load)
+
+    # ใช้เทรนด์โมเดลเพื่ออัพเดทค่าพารามิเตอร์ (bias, weight)
+    def optimization( self ) :
+        self.loss_lists = [] # เก็บค่า Sum of Squared Residuals เพื่อนำไปเทียบกับ bias หรือ weight
+        self.bias_lists = [self.bias] # เก็บค่า bias
+        self.weight_lists = [self.weight] # เก็บค่า weight
+
+        # bias and weight optimization
+        for i in range( self.epochs ) :
+            print( f'Epochs {i + 1}/{self.epochs}')
+            # คำนวณหา bias ใหม่
+            new_bias = self.optimize_new_value( self, self.diff_bias, self.bias_lists[i], self.weight_lists[i], self.learning_rate )
+            # คำนวณหา weight ใหม่
+            new_weight = self.optimize_new_value( self, self.diff_weight, self.bias_lists[i], self.weight_lists[i], self.learning_rate )
+
+            # อัพเดทค่าพารามิเตอร์ใหม่
+            self.bias_lists.append( new_bias )
+            self.weight_lists.append( new_weight )
+
+            # แสดงค่า loss ในที่นี้ใช้ SSR(um of Squared Residuals)
+            print( f'loss = {self.loss_function( self.bias_lists[i], self.weight_lists[i], self.feature, self.label)}' )
+
+        self.bias = self.bias_lists[-1] # อัพเดทค่า bias ที่ดีที่สุดหลังจากการเทรนด์
+        self.weight = self.weight_lists[-1] # # อัพเดทค่า weight ที่ดีที่สุดหลังจากการเทรนด์
+        print( f'\nBias = {self.bias}' ) # แสดงค่า bias
+        print( f'Weight = {self.weight}' ) # แสดงค่า weight
+
+        # loss calculation
+        for j in range( len(self.bias_lists) ) :
+            # นำค่า bias และ weight ไปคำนวณหา SSR และเก็บค่าไว้ใน List เพื่อนำค่าที่ได้ไปแสดงเป็นกราฟ
+            self.loss_lists.append( self.loss_function( self.bias_lists[j], self.weight_lists[j], self.feature, self.label) )
+        self.show_graph()
+
+    def show_graph( self ) :
+        # Plot bias and SSR(Sum of Squared Residuals)
+        plt.scatter( self.bias_lists, self.loss_lists, color = "blue" )
+        plt.plot( self.bias_lists, self.loss_lists, color = "red" )
+        plt.title( 'Gradient descent of bias' )
+        plt.xlabel( 'bias' )
+        plt.ylabel( 'loss (SSR)')
+        plt.show()
+        # Plot weight and SSR(Sum of Squared Residuals)
+        plt.scatter( self.weight_lists, self.loss_lists, color = "blue" )
+        plt.plot( self.weight_lists, self.loss_lists, color = "red" )
+        plt.title( 'Gradient descent of weight' )
+        plt.xlabel( 'weight' )
+        plt.ylabel( 'loss (SSR)')
+        plt.show()
+        # Plot Loss and Epochs
+        plt.plot( [i + 1 for i in range(self.epochs + 1)], self.loss_lists, color = "red", linewidth = 3 )
+        plt.title( 'Show result of training' )
+        plt.xlabel( 'epochs' )
+        plt.ylabel( 'loss')
+        plt.show()
+
+    # ใช้ทดสอบโมเดลหลังจากเทรนด์เสร็จ
+    def predict( self, feature ) :
+        predicted = []
+        for pred in range( len(feature) ) :
+            Y = ( self.weight * feature[pred] ) + self.bias # Y = wx + b
+            predicted.append( Y )
+        #print(predicted)
+
+        return predicted
+##########################################################################################
+
+
+
+# สร้างข้อมูลสุ่มสำหรับโมเดล
+##########################################################################################
+x_data = [ i for i in range(30) ]
+y_data = []
+
+for i in range( len(x_data) ) :
+    random_number = random.randint( 0, 3 )
+    y_data.append( i * 0.64 + random_number )
+
+# Plot outputs
+plt.scatter( x_data, y_data, color="black", label = 'true values' )
+plt.title( 'Random data for linear regression model' )
+plt.xlabel( 'x_data' )
+plt.ylabel( 'y_data')
+plt.legend()
+plt.show()
+##########################################################################################
+
+
+
+# แบ่งข้อมูลสำหรับเทรนด์และทดสอบ
+##########################################################################################
+data_for_train = int( len(x_data) * 0.7 ) # 70% ของข้อมูลสำหรับเทรนด์
+
+# สร้างตัวแปรสำหรับเก็บข้อมูล
+x_train = []
+y_train = []
+x_test = []
+y_test = []
+
+for i in range( len(x_data) ) :
+    if i + 1 <= data_for_train :
+        x_train.append( x_data[i] )
+        y_train.append( y_data[i] )
+
+    else :
+        x_test.append( x_data[i] )
+        y_test.append( y_data[i] )
+
+# Show train data and test data
+plt.scatter( x_train, y_train, color="black", label = 'train data' )
+plt.scatter( x_test, y_test, color="blue", label = 'test data' )
+plt.title( 'Random data for linear regression model' )
+plt.xlabel( 'x_data' )
+plt.ylabel( 'y_data' )
+plt.legend()
+plt.show()
+##########################################################################################
+
+
+
+# เรียกใช้และเทรนด์โมเดล
+##########################################################################################
+epochs = 2000
+learning_rate = 0.000116
+model1 = linear_regression()
+model1.fit( x_train, y_train, epochs, learning_rate )
+##########################################################################################
+
+
+
+# ทดสอบโมเดลกับชุดข้อมูล x_test
+##########################################################################################
+y_pred = model1.predict( x_test )
+# Plot outputs
+plt.scatter( x_test, y_test, color = "blue", label = 'test data' ) # แสดงข้อมูลจริง
+plt.plot( x_test, y_pred, color = "red", linewidth = 2, label = 'model' ) # แสดงข้อมูลที่โมเดลทำนาย
+plt.title( 'Show predicted of test data' )
+plt.xlabel( 'input data' )
+plt.ylabel( 'output data')
+plt.legend()
+plt.show()
+##########################################################################################
+
+
+
+# ทดสอบโมเดลกับชุดข้อมูลทั้งหมด
+##########################################################################################
+pred_x_data = model1.predict( x_data )
+# Plot outputs
+plt.scatter( x_data, y_data, color = "black", label = 'data' ) # แสดงข้อมูลจริง
+plt.plot( x_data, pred_x_data, color = "red", linewidth = 2, label = 'model' ) # แสดงข้อมูลที่โมเดลทำนาย
+plt.title( 'Show predicted of all data' )
+plt.xlabel( 'input data' )
+plt.ylabel( 'output data')
+plt.legend()
+plt.show()
+##########################################################################################
